@@ -102,6 +102,7 @@ def wykonaj_ruch_bota(srodowisko, id_gracza):
     _, _, czy_koniec = srodowisko.wykonaj_krok(id_gracza, akcja)
     return czy_koniec
 
+
 def obsluz_ture_gry(pokoj_id, dane_pokoju, dane_graczy, dane_kart, akcja_czlowieka=None):
     srodowisko, gracze_dane = odtworz_srodowisko(dane_pokoju, dane_graczy, dane_kart)
     id_aktualnego = srodowisko.silnik.aktualny_gracz
@@ -112,9 +113,10 @@ def obsluz_ture_gry(pokoj_id, dane_pokoju, dane_graczy, dane_kart, akcja_czlowie
 
     while not czy_koniec:
         id_kolejnego = srodowisko.silnik.aktualny_gracz
-        if len(srodowisko.silnik.ranking) > 0:
+        if len(srodowisko.silnik.ranking) >= len(dane_graczy) - 1:
             czy_koniec = True
             break
+
         if not gracze_dane[id_kolejnego]['czy_bot']:
             break
 

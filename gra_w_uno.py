@@ -418,10 +418,15 @@ class srodowisko_uno:
             nagroda += 2
 
         czy_koniec = False
-        if len(self.silnik.ranking) == 1:
-            if id_gracza == self.silnik.ranking[0]:
-                nagroda += 2000
-                self.silnik.dodaj_log(f"!!! Gracz {id_gracza} WYGRYWA GRE !!!")
+        if len(self.silnik.ranking) >= self.liczba_graczy - 1:
+            for i in range(self.liczba_graczy):
+                if i not in self.silnik.ranking:
+                    self.silnik.ranking.append(i)
+                    self.silnik.dodaj_log(f"Gracz {i} zostaje na koncu z kartami.")
             czy_koniec = True
+            self.silnik.dodaj_log("!!! GRA ZAKONCZONA !!!")
+        elif id_gracza in self.silnik.ranking and nagroda == 2000 + 1:
+            self.silnik.dodaj_log(f"!!! Gracz {id_gracza} WYGRYWA Z MIEJSCEM {len(self.silnik.ranking)} !!!")
+            nagroda = 2000
 
         return self.pobierz_stan(self.silnik.aktualny_gracz), nagroda, czy_koniec

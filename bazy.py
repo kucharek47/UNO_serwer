@@ -61,6 +61,7 @@ def inicjalizuj_baze():
     with engine.begin() as conn:
         for sql in zapytania:
             conn.execute(text(sql))
+        conn.execute(text("ALTER TABLE gracze ADD COLUMN IF NOT EXISTS nazwa VARCHAR(50) DEFAULT 'Gracz';"))
 
 
 def sprawdz_limit_host(ip_adres):
@@ -91,12 +92,12 @@ def utworz_pokoj(kod, ip_adres):
         return wynik.scalar()
 
 
-def dodaj_gracza(pokoj_id, numer, czy_bot, token):
+def dodaj_gracza(pokoj_id, numer, nazwa, czy_bot, token):
     with engine.begin() as conn:
         wynik = conn.execute(text("""
-            INSERT INTO gracze (pokoj_id, numer_w_pokoju, czy_bot, token)
-            VALUES (:pokoj_id, :numer, :czy_bot, :token) RETURNING id;
-        """), {"pokoj_id": pokoj_id, "numer": numer, "czy_bot": czy_bot, "token": token})
+            INSERT INTO gracze (pokoj_id, numer_w_pokoju, nazwa, czy_bot, token)
+            VALUES (:pokoj_id, :numer, :nazwa, :czy_bot, :token) RETURNING id;
+        """), {"pokoj_id": pokoj_id, "numer": numer, "nazwa": nazwa, "czy_bot": czy_bot, "token": token})
         return wynik.scalar()
 
 
@@ -178,7 +179,7 @@ def pobierz_stan_dla_tokenu(token):
         """), {"pokoj_id": pokoj_id}).fetchall()
 
         gracze = conn.execute(text("""
-            SELECT id, numer_w_pokoju, czy_bot, zglasza_uno, pominiete_tury
+            SELECT id, numer_w_pokoju, nazwa, czy_bot, zglasza_uno, pominiete_tury
             FROM gracze
             WHERE pokoj_id = :pokoj_id
         """), {"pokoj_id": pokoj_id}).fetchall()
@@ -194,7 +195,7 @@ def pobierz_stan_dla_tokenu(token):
             "aktywne_combo": dane_weryfikacji[8],
             "twoj_numer": dane_weryfikacji[9],
             "karty": [{"gracz_id": k[0], "lokalizacja": k[1], "pozycja": k[2], "kolor": k[3], "wartosc": k[4]} for k in karty],
-            "gracze": [{"id": g[0], "numer_w_pokoju": g[1], "czy_bot": g[2], "zglasza_uno": g[3], "pominiete_tury": g[4]} for g in gracze]
+            "gracze": [{"id": g[0], "numer_w_pokoju": g[1], "nazwa": g[2], "czy_bot": g[3], "zglasza_uno": g[4], "pominiete_tury": g[5]} for g in gracze]
         }
 
 
@@ -233,14 +234,12 @@ def pobierz_pelny_pokoj(pokoj_id):
 def pobierz_graczy(pokoj_id):
     with engine.connect() as conn:
         wynik = conn.execute(text("""
-            SELECT id, numer_w_pokoju, czy_bot, zglasza_uno, pominiete_tury
+            SELECT id, numer_w_pokoju, nazwa, czy_bot, zglasza_uno, pominiete_tury
             FROM gracze
             WHERE pokoj_id = :pokoj_id
             ORDER BY numer_w_pokoju ASC
         """), {"pokoj_id": pokoj_id}).fetchall()
-
-        return [{"id": g[0], "numer_w_pokoju": g[1], "czy_bot": g[2], "zglasza_uno": g[3], "pominiete_tury": g[4]} for g in wynik]
-
+        return [{"id": g[0], "numer_w_pokoju": g[1], "nazwa": g[2], "czy_bot": g[3], "zglasza_uno": g[4], "pominiete_tury": g[5]} for g in wynik]
 
 def pobierz_karty(pokoj_id):
     with engine.connect() as conn:

@@ -18,6 +18,7 @@ with app.app_context():
 @socketio.on('tworz_pokoj')
 def tworz_pokoj(dane):
     ip_adres = request.remote_addr
+    nazwa_gracza = dane.get('nazwa', 'Host')
 
     if not bazy.sprawdz_limit_host(ip_adres):
         return {'status': 'blad', 'wiadomosc': 'Limit czasu, sprobuj ponownie za 2 minuty.'}
@@ -26,7 +27,7 @@ def tworz_pokoj(dane):
     pokoj_id = bazy.utworz_pokoj(kod, ip_adres)
     token = uuid.uuid4().hex
 
-    bazy.dodaj_gracza(pokoj_id, 0, False, token)
+    bazy.dodaj_gracza(pokoj_id, 0, nazwa_gracza, False, token)
 
     join_room(kod)
     return {'status': 'ok', 'kod': kod, 'token': token, 'numer_gracza': 0}
@@ -35,6 +36,7 @@ def tworz_pokoj(dane):
 @socketio.on('dolacz')
 def dolacz(dane):
     kod = dane.get('kod')
+    nazwa_gracza = dane.get('nazwa', 'Gracz')
     wynik = bazy.znajdz_pokoj_i_wolne_miejsce(kod)
 
     if not wynik:
@@ -43,10 +45,10 @@ def dolacz(dane):
     pokoj_id, numer_gracza = wynik
     token = uuid.uuid4().hex
 
-    bazy.dodaj_gracza(pokoj_id, numer_gracza, False, token)
+    bazy.dodaj_gracza(pokoj_id, numer_gracza, nazwa_gracza, False, token)
 
     join_room(kod)
-    emit('nowy_gracz', {'numer': numer_gracza, 'czy_bot': False}, room=kod)
+    emit('nowy_gracz', {'numer': numer_gracza, 'nazwa': nazwa_gracza, 'czy_bot': False}, room=kod)
     return {'status': 'ok', 'kod': kod, 'token': token, 'numer_gracza': numer_gracza}
 
 
