@@ -19,11 +19,12 @@ def wyslij_zaktualizowany_stan(pokoj_id, logi=None):
     nowe_pelne_dane = bazy.pobierz_pelny_pokoj(pokoj_id)
     nowe_dane_graczy = bazy.pobierz_graczy(pokoj_id)
     nowe_dane_kart = bazy.pobierz_karty(pokoj_id)
+    tokeny_graczy = bazy.pobierz_tokeny_graczy(pokoj_id)
     kod_pokoju = nowe_pelne_dane['kod_dostepu']
 
     for gracz in nowe_dane_graczy:
         if not gracz['czy_bot']:
-            token = gracz.get('token')
+            token = tokeny_graczy.get(gracz['id'])
             zfiltrowane_karty = [
                 k for k in nowe_dane_kart
                 if k['lokalizacja'] != 'reka' or k['gracz_id'] == gracz['id']

@@ -109,7 +109,11 @@ def obsluz_ture_gry(pokoj_id, dane_pokoju, dane_graczy, dane_kart, akcja_czlowie
     czy_koniec = False
 
     if akcja_czlowieka is not None and not gracze_dane[id_aktualnego]['czy_bot']:
-        _, _, czy_koniec = srodowisko.wykonaj_krok(id_aktualnego, akcja_czlowieka)
+        maska = srodowisko.pobierz_maske_akcji(id_aktualnego)
+        if maska[akcja_czlowieka] == 1:
+            _, _, czy_koniec = srodowisko.wykonaj_krok(id_aktualnego, akcja_czlowieka)
+        else:
+            return srodowisko.silnik.logi
 
     while not czy_koniec:
         id_kolejnego = srodowisko.silnik.aktualny_gracz

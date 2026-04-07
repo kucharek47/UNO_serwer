@@ -21,7 +21,7 @@ def inicjalizuj_baze():
             aktualny_kolor VARCHAR(15),
             kara INT DEFAULT 0,
             ile_stopow INT DEFAULT 0,
-            aktywne_combo VARCHAR(10),
+            aktywne_combo VARCHAR(20),
             utworzono TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """,
@@ -62,7 +62,7 @@ def inicjalizuj_baze():
         for sql in zapytania:
             conn.execute(text(sql))
         conn.execute(text("ALTER TABLE gracze ADD COLUMN IF NOT EXISTS nazwa VARCHAR(50) DEFAULT 'Gracz';"))
-
+        conn.execute(text("ALTER TABLE pokoje ALTER COLUMN aktywne_combo TYPE VARCHAR(20);"))
 
 def sprawdz_limit_host(ip_adres):
     with engine.connect() as conn:
@@ -270,3 +270,8 @@ def zmien_status_pokoju(pokoj_id, nowy_status):
             SET status = :status 
             WHERE id = :pokoj_id
         """), {"status": nowy_status, "pokoj_id": pokoj_id})
+
+def pobierz_tokeny_graczy(pokoj_id):
+    with engine.connect() as conn:
+        wynik = conn.execute(text("SELECT id, token FROM gracze WHERE pokoj_id = :pokoj_id"), {"pokoj_id": pokoj_id}).fetchall()
+        return {w[0]: w[1] for w in wynik}
