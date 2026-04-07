@@ -15,6 +15,31 @@ with app.app_context():
     bazy.inicjalizuj_baze()
 
 
+def wyslij_zaktualizowany_stan(pokoj_id, logi=None):
+    nowe_pelne_dane = bazy.pobierz_pelny_pokoj(pokoj_id)
+    nowe_dane_graczy = bazy.pobierz_graczy(pokoj_id)
+    nowe_dane_kart = bazy.pobierz_karty(pokoj_id)
+    kod_pokoju = nowe_pelne_dane['kod_dostepu']
+
+    for gracz in nowe_dane_graczy:
+        if not gracz['czy_bot']:
+            token = gracz.get('token')
+            zfiltrowane_karty = [
+                k for k in nowe_dane_kart
+                if k['lokalizacja'] != 'reka' or k['gracz_id'] == gracz['id']
+            ]
+            stan_do_wyslania = {
+                'pokoj': nowe_pelne_dane,
+                'gracze': nowe_dane_graczy,
+                'karty': zfiltrowane_karty,
+                'logi': logi or []
+            }
+            if token:
+                emit('aktualizacja_stolu', stan_do_wyslania, room=token)
+            else:
+                emit('aktualizacja_stolu', stan_do_wyslania, room=kod_pokoju)
+
+
 @socketio.on('tworz_pokoj')
 def tworz_pokoj(dane):
     ip_adres = request.remote_addr
@@ -30,6 +55,7 @@ def tworz_pokoj(dane):
     bazy.dodaj_gracza(pokoj_id, 0, nazwa_gracza, False, token)
 
     join_room(kod)
+    join_room(token)
     return {'status': 'ok', 'kod': kod, 'token': token, 'numer_gracza': 0}
 
 
@@ -48,6 +74,7 @@ def dolacz(dane):
     bazy.dodaj_gracza(pokoj_id, numer_gracza, nazwa_gracza, False, token)
 
     join_room(kod)
+    join_room(token)
     emit('nowy_gracz', {'numer': numer_gracza, 'nazwa': nazwa_gracza, 'czy_bot': False}, room=kod)
     return {'status': 'ok', 'kod': kod, 'token': token, 'numer_gracza': numer_gracza}
 
@@ -79,8 +106,11 @@ def dodaj_bota(dane):
     while wolny_numer in zajete_numery:
         wolny_numer += 1
 
-    bazy.dodaj_gracza(pokoj_id, wolny_numer, True, uuid.uuid4().hex)
-    emit('nowy_gracz', {'numer': wolny_numer, 'czy_bot': True}, room=dane_pokoju['kod_dostepu'])
+    nazwa_bota = f"Bot {wolny_numer}"
+    # Dodano brakujący parametr z nazwą bota
+    bazy.dodaj_gracza(pokoj_id, wolny_numer, nazwa_bota, True, uuid.uuid4().hex)
+
+    emit('nowy_gracz', {'numer': wolny_numer, 'nazwa': nazwa_bota, 'czy_bot': True}, room=dane_pokoju['kod_dostepu'])
     return {'status': 'ok', 'numer_bota': wolny_numer}
 
 
@@ -99,7 +129,6 @@ def start_gry(dane):
 
     dane_pokoju = bazy.pobierz_pelny_pokoj(pokoj_id)
 
-    # DODANA WALIDACJA: Blokada restartowania już trwającej gry
     if dane_pokoju['status'] != 'oczekuje':
         return {'status': 'blad', 'wiadomosc': 'Gra juz sie rozpoczela.'}
 
@@ -117,35 +146,17 @@ def start_gry(dane):
     bazy.zapisz_stan_gry(pokoj_id, stan_pokoju, karty_dane)
     bazy.zaktualizuj_stan_graczy(aktualizacje_graczy)
 
-    nowe_pelne_dane = bazy.pobierz_pelny_pokoj(pokoj_id)
-    nowe_dane_graczy = bazy.pobierz_graczy(pokoj_id)
-    nowe_dane_kart = bazy.pobierz_karty(pokoj_id)
+    wyslij_zaktualizowany_stan(pokoj_id, srodowisko.silnik.logi)
 
-    stan_do_wyslania = {
-        'pokoj': nowe_pelne_dane,
-        'gracze': nowe_dane_graczy,
-        'karty': nowe_dane_kart,
-        'logi': srodowisko.silnik.logi
-    }
-
-    emit('aktualizacja_stolu', stan_do_wyslania, room=dane_pokoju['kod_dostepu'])
-
+    dane_graczy_nowe = bazy.pobierz_graczy(pokoj_id)
     id_aktualnego = srodowisko.silnik.aktualny_gracz
-    if nowe_dane_graczy[id_aktualnego]['czy_bot']:
-        # POPRAWKA: Przechwytujemy logi bota i wysyłamy je do graczy
-        logi_botow = logika_serwerowa.obsluz_ture_gry(pokoj_id, nowe_pelne_dane, nowe_dane_graczy, nowe_dane_kart, None)
 
-        nowe_pelne_dane_po_bocie = bazy.pobierz_pelny_pokoj(pokoj_id)
-        nowe_dane_graczy_po_bocie = bazy.pobierz_graczy(pokoj_id)
-        nowe_dane_kart_po_bocie = bazy.pobierz_karty(pokoj_id)
-
-        stan_do_wyslania_po_bocie = {
-            'pokoj': nowe_pelne_dane_po_bocie,
-            'gracze': nowe_dane_graczy_po_bocie,
-            'karty': nowe_dane_kart_po_bocie,
-            'logi': logi_botow
-        }
-        emit('aktualizacja_stolu', stan_do_wyslania_po_bocie, room=dane_pokoju['kod_dostepu'])
+    if dane_graczy_nowe[id_aktualnego]['czy_bot']:
+        dane_pokoju_nowe = bazy.pobierz_pelny_pokoj(pokoj_id)
+        dane_kart_nowe = bazy.pobierz_karty(pokoj_id)
+        logi_botow = logika_serwerowa.obsluz_ture_gry(pokoj_id, dane_pokoju_nowe, dane_graczy_nowe, dane_kart_nowe,
+                                                      None)
+        wyslij_zaktualizowany_stan(pokoj_id, logi_botow)
 
     return {'status': 'ok'}
 
@@ -153,14 +164,27 @@ def start_gry(dane):
 @socketio.on('wznow_sesje')
 def wznow_sesje(dane):
     token = dane.get('token')
-    dane_pokoju = bazy.pobierz_stan_dla_tokenu(token)
+    dane_weryfikacji = bazy.pobierz_id_po_tokenie(token)
 
-    if not dane_pokoju:
+    if not dane_weryfikacji:
         return {'status': 'blad', 'wiadomosc': 'Nieprawidlowy token sesji.'}
+
+    pokoj_id, _, numer_gracza = dane_weryfikacji
+
+    dane_pokoju = bazy.pobierz_pelny_pokoj(pokoj_id)
+    dane_graczy = bazy.pobierz_graczy(pokoj_id)
+    dane_kart = bazy.pobierz_karty(pokoj_id)
 
     kod_pokoju = dane_pokoju['kod_dostepu']
     join_room(kod_pokoju)
-    return {'status': 'ok', 'stan_gry': dane_pokoju}
+
+    stan_gry = {
+        'pokoj': dane_pokoju,
+        'gracze': dane_graczy,
+        'karty': dane_kart,
+        'logi': []
+    }
+    return {'status': 'ok', 'stan_gry': stan_gry, 'numer_gracza': numer_gracza}
 
 
 @socketio.on('wykonaj_ruch')
@@ -187,18 +211,7 @@ def wykonaj_ruch(dane):
 
     logi = logika_serwerowa.obsluz_ture_gry(pokoj_id, pelne_dane_pokoju, dane_graczy, dane_kart, akcja)
 
-    nowe_pelne_dane = bazy.pobierz_pelny_pokoj(pokoj_id)
-    nowe_dane_graczy = bazy.pobierz_graczy(pokoj_id)
-    nowe_dane_kart = bazy.pobierz_karty(pokoj_id)
-
-    stan_do_wyslania = {
-        'pokoj': nowe_pelne_dane,
-        'gracze': nowe_dane_graczy,
-        'karty': nowe_dane_kart,
-        'logi': logi
-    }
-
-    emit('aktualizacja_stolu', stan_do_wyslania, room=pelne_dane_pokoju['kod_dostepu'])
+    wyslij_zaktualizowany_stan(pokoj_id, logi)
     return {'status': 'ok'}
 
 
