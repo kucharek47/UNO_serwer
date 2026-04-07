@@ -3,12 +3,19 @@ import numpy as np
 from gra_w_uno import srodowisko_uno, karta
 import bazy
 
-sesja_onnx = ort.InferenceSession("model_uno.onnx")
+sesja_onnx = ort.InferenceSession("model_uno_v10.onnx")
 
 
 def odtworz_srodowisko(dane_pokoju, dane_graczy, dane_kart):
     liczba_graczy = len(dane_graczy)
-    srodowisko = srodowisko_uno(liczba_graczy)
+    srodowisko = srodowisko_uno(liczba_graczy, max_graczy=5, nowa_gra=False)
+
+
+sesja_onnx = ort.InferenceSession("model_uno.onnx")
+
+def odtworz_srodowisko(dane_pokoju, dane_graczy, dane_kart):
+    liczba_graczy = len(dane_graczy)
+    srodowisko = srodowisko_uno(liczba_graczy, nowa_gra=False)
 
     srodowisko.silnik.aktualny_gracz = dane_pokoju['aktualny_gracz']
     srodowisko.silnik.kierunek = dane_pokoju['kierunek']
@@ -41,7 +48,6 @@ def odtworz_srodowisko(dane_pokoju, dane_graczy, dane_kart):
         srodowisko.silnik.gracze[i].pominiete_tury = g_dane['pominiete_tury']
 
     return srodowisko, dane_graczy
-
 
 def pobierz_dane_do_zapisu(srodowisko, pok_id, gracze_dane):
     stan_pokoju = {
@@ -89,7 +95,6 @@ def pobierz_dane_do_zapisu(srodowisko, pok_id, gracze_dane):
 
     return stan_pokoju, karty_dane, aktualizacje_graczy
 
-
 def wykonaj_ruch_bota(srodowisko, id_gracza):
     stan = srodowisko.pobierz_stan(id_gracza)
     maska = srodowisko.pobierz_maske_akcji(id_gracza)
@@ -102,25 +107,29 @@ def wykonaj_ruch_bota(srodowisko, id_gracza):
             wyjscie_onnx[i] = -np.inf
 
     akcja = int(np.argmax(wyjscie_onnx))
-    srodowisko.wykonaj_krok(id_gracza, akcja)
-
+    _, _, czy_koniec = srodowisko.wykonaj_krok(id_gracza, akcja)
+    return czy_koniec
 
 def obsluz_ture_gry(pokoj_id, dane_pokoju, dane_graczy, dane_kart, akcja_czlowieka=None):
     srodowisko, gracze_dane = odtworz_srodowisko(dane_pokoju, dane_graczy, dane_kart)
-
     id_aktualnego = srodowisko.silnik.aktualny_gracz
+    czy_koniec = False
 
     if akcja_czlowieka is not None and not gracze_dane[id_aktualnego]['czy_bot']:
-        srodowisko.wykonaj_krok(id_aktualnego, akcja_czlowieka)
+        _, _, czy_koniec = srodowisko.wykonaj_krok(id_aktualnego, akcja_czlowieka)
 
-    while True:
+    while not czy_koniec:
         id_kolejnego = srodowisko.silnik.aktualny_gracz
         if len(srodowisko.silnik.ranking) > 0:
+            czy_koniec = True
             break
         if not gracze_dane[id_kolejnego]['czy_bot']:
             break
 
-        wykonaj_ruch_bota(srodowisko, id_kolejnego)
+        czy_koniec = wykonaj_ruch_bota(srodowisko, id_kolejnego)
+
+    if czy_koniec:
+        bazy.zmien_status_pokoju(pokoj_id, 'zakonczona')
 
     stan_pokoju, karty_dane, aktualizacje_graczy = pobierz_dane_do_zapisu(srodowisko, pokoj_id, gracze_dane)
 

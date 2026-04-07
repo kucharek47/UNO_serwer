@@ -103,7 +103,7 @@ def start_gry(dane):
 
     bazy.zmien_status_pokoju(pokoj_id, 'w_trakcie')
 
-    srodowisko = srodowisko_uno(len(gracze), nowa_gra=True)
+    srodowisko = srodowisko_uno(len(gracze), max_graczy=5, nowa_gra=True)
 
     stan_pokoju, karty_dane, aktualizacje_graczy = logika_serwerowa.pobierz_dane_do_zapisu(srodowisko, pokoj_id, gracze)
 
@@ -191,4 +191,4 @@ def wykonaj_ruch(dane):
 
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000)
+    socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
