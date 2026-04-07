@@ -8,7 +8,7 @@ import logika_serwerowa
 from gra_w_uno import srodowisko_uno
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 's8K3nZ9pQ1')
+app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 with app.app_context():
@@ -96,6 +96,11 @@ def start_gry(dane):
         return {'status': 'blad', 'wiadomosc': 'Tylko host moze wystartowac gre.'}
 
     dane_pokoju = bazy.pobierz_pelny_pokoj(pokoj_id)
+
+    # DODANA WALIDACJA: Blokada restartowania już trwającej gry
+    if dane_pokoju['status'] != 'oczekuje':
+        return {'status': 'blad', 'wiadomosc': 'Gra juz sie rozpoczela.'}
+
     gracze = bazy.pobierz_graczy(pokoj_id)
 
     if len(gracze) < 2:
@@ -125,7 +130,8 @@ def start_gry(dane):
 
     id_aktualnego = srodowisko.silnik.aktualny_gracz
     if nowe_dane_graczy[id_aktualnego]['czy_bot']:
-        logika_serwerowa.obsluz_ture_gry(pokoj_id, nowe_pelne_dane, nowe_dane_graczy, nowe_dane_kart, None)
+        # POPRAWKA: Przechwytujemy logi bota i wysyłamy je do graczy
+        logi_botow = logika_serwerowa.obsluz_ture_gry(pokoj_id, nowe_pelne_dane, nowe_dane_graczy, nowe_dane_kart, None)
 
         nowe_pelne_dane_po_bocie = bazy.pobierz_pelny_pokoj(pokoj_id)
         nowe_dane_graczy_po_bocie = bazy.pobierz_graczy(pokoj_id)
@@ -135,7 +141,7 @@ def start_gry(dane):
             'pokoj': nowe_pelne_dane_po_bocie,
             'gracze': nowe_dane_graczy_po_bocie,
             'karty': nowe_dane_kart_po_bocie,
-            'logi': []
+            'logi': logi_botow
         }
         emit('aktualizacja_stolu', stan_do_wyslania_po_bocie, room=dane_pokoju['kod_dostepu'])
 
@@ -167,6 +173,10 @@ def wykonaj_ruch(dane):
     pokoj_id, id_gracza_baza, numer_w_pokoju = dane_weryfikacji
 
     pelne_dane_pokoju = bazy.pobierz_pelny_pokoj(pokoj_id)
+
+    if pelne_dane_pokoju['status'] == 'zakonczona':
+        return {'status': 'blad', 'wiadomosc': 'Gra juz sie zakonczyla.'}
+
     dane_graczy = bazy.pobierz_graczy(pokoj_id)
     dane_kart = bazy.pobierz_karty(pokoj_id)
 

@@ -5,17 +5,9 @@ import bazy
 
 sesja_onnx = ort.InferenceSession("model_uno_v10.onnx")
 
-
 def odtworz_srodowisko(dane_pokoju, dane_graczy, dane_kart):
     liczba_graczy = len(dane_graczy)
     srodowisko = srodowisko_uno(liczba_graczy, max_graczy=5, nowa_gra=False)
-
-
-sesja_onnx = ort.InferenceSession("model_uno.onnx")
-
-def odtworz_srodowisko(dane_pokoju, dane_graczy, dane_kart):
-    liczba_graczy = len(dane_graczy)
-    srodowisko = srodowisko_uno(liczba_graczy, nowa_gra=False)
 
     srodowisko.silnik.aktualny_gracz = dane_pokoju['aktualny_gracz']
     srodowisko.silnik.kierunek = dane_pokoju['kierunek']

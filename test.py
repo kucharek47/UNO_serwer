@@ -36,6 +36,11 @@ def na_aktualizacje(dane):
     for wpis in logi:
         print(f"SERWER: {wpis}")
 
+    if pokoj['status'] == 'zakonczona':
+        print("\n--- GRA ZAKONCZONA (KTOS WYGRAL) ---")
+        klient.disconnect()
+        return
+
     if pokoj['aktualny_gracz'] == 0:
         if licznik >= 10:
             print("Wykonano 10 ruchow, konczenie polaczenia")
