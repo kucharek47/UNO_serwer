@@ -1,18 +1,29 @@
 import os
 import random
 import uuid
-from flask import Flask, request
+from flask import Flask, request, send_from_directory
 from flask_socketio import SocketIO, join_room, emit
 import bazy
 import logika_serwerowa
 from gra_w_uno import srodowisko_uno
 
-app = Flask(__name__)
+sciezka_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), 'dist/UNOFront/browser'))
+
+app = Flask(__name__, static_folder=sciezka_dist, static_url_path='/')
 app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 with app.app_context():
     bazy.inicjalizuj_baze()
+
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serwuj_angular(path):
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 
 def wyslij_zaktualizowany_stan(pokoj_id, logi=None):
@@ -79,6 +90,7 @@ def dolacz(dane):
     emit('nowy_gracz', {'numer': numer_gracza, 'nazwa': nazwa_gracza, 'czy_bot': False}, room=kod, include_self=True)
     return {'status': 'ok', 'kod': kod, 'token': token, 'numer_gracza': numer_gracza}
 
+
 @socketio.on('dodaj_bota')
 def dodaj_bota(dane):
     token = dane.get('token')
@@ -107,12 +119,13 @@ def dodaj_bota(dane):
         wolny_numer += 1
 
     nazwa_bota = f"Bot {wolny_numer}"
-    # Dodano brakujący parametr z nazwą bota
+
     bazy.dodaj_gracza(pokoj_id, wolny_numer, nazwa_bota, True, uuid.uuid4().hex)
 
     emit('nowy_gracz', {'numer': wolny_numer, 'nazwa': nazwa_bota, 'czy_bot': True}, room=dane_pokoju['kod_dostepu'],
          include_self=True)
     return {'status': 'ok', 'numer_bota': wolny_numer}
+
 
 @socketio.on('start_gry')
 def start_gry(dane):
@@ -210,7 +223,8 @@ def wykonaj_ruch(dane):
     dane_kart = bazy.pobierz_karty(pokoj_id)
 
     if pelne_dane_pokoju['aktualny_gracz'] != numer_w_pokoju:
-        print(f"[DEBUG] Odrzucono ruch - to tura gracza {pelne_dane_pokoju['aktualny_gracz']}, a probowal gracz {numer_w_pokoju}.")
+        print(
+            f"[DEBUG] Odrzucono ruch - to tura gracza {pelne_dane_pokoju['aktualny_gracz']}, a probowal gracz {numer_w_pokoju}.")
         return {'status': 'blad', 'wiadomosc': 'To nie jest twoja tura.'}
 
     logi = logika_serwerowa.obsluz_ture_gry(pokoj_id, pelne_dane_pokoju, dane_graczy, dane_kart, akcja)
@@ -221,4 +235,4 @@ def wykonaj_ruch(dane):
 
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=54321, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=13007, allow_unsafe_werkzeug=True)
