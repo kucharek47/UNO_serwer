@@ -27,7 +27,7 @@ def wyslij_zaktualizowany_stan(pokoj_id, logi=None):
             token = tokeny_graczy.get(gracz['id'])
             zfiltrowane_karty = [
                 k for k in nowe_dane_kart
-                if k['lokalizacja'] != 'reka' or k['gracz_id'] == gracz['id']
+                if k['lokalizacja'] == 'stos' or (k['lokalizacja'] == 'reka' and k['gracz_id'] == gracz['id'])
             ]
             stan_do_wyslania = {
                 'pokoj': nowe_pelne_dane,
@@ -192,25 +192,29 @@ def wznow_sesje(dane):
 def wykonaj_ruch(dane):
     token = dane.get('token')
     akcja = dane.get('akcja')
+    print(f"[DEBUG] Otrzymano probe wykonania akcji: {akcja} od tokenu: {token}")
 
     dane_weryfikacji = bazy.pobierz_id_po_tokenie(token)
     if not dane_weryfikacji:
+        print("[ERROR] Nieprawidlowy token sesji.")
         return {'status': 'blad', 'wiadomosc': 'Nieprawidlowy token sesji.'}
 
     pokoj_id, id_gracza_baza, numer_w_pokoju = dane_weryfikacji
-
     pelne_dane_pokoju = bazy.pobierz_pelny_pokoj(pokoj_id)
 
     if pelne_dane_pokoju['status'] == 'zakonczona':
+        print("[DEBUG] Gra juz zakonczona, odrzucam ruch.")
         return {'status': 'blad', 'wiadomosc': 'Gra juz sie zakonczyla.'}
 
     dane_graczy = bazy.pobierz_graczy(pokoj_id)
     dane_kart = bazy.pobierz_karty(pokoj_id)
 
     if pelne_dane_pokoju['aktualny_gracz'] != numer_w_pokoju:
+        print(f"[DEBUG] Odrzucono ruch - to tura gracza {pelne_dane_pokoju['aktualny_gracz']}, a probowal gracz {numer_w_pokoju}.")
         return {'status': 'blad', 'wiadomosc': 'To nie jest twoja tura.'}
 
     logi = logika_serwerowa.obsluz_ture_gry(pokoj_id, pelne_dane_pokoju, dane_graczy, dane_kart, akcja)
+    print(f"[DEBUG] Logi z tury: {logi}")
 
     wyslij_zaktualizowany_stan(pokoj_id, logi)
     return {'status': 'ok'}

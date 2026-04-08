@@ -35,9 +35,13 @@ def odtworz_srodowisko(dane_pokoju, dane_graczy, dane_kart):
             idx_gracza = next(i for i, gr in enumerate(dane_graczy) if gr['id'] == k['gracz_id'])
             srodowisko.silnik.gracze[idx_gracza].dobierz_karte(nowa_karta)
 
+    srodowisko.silnik.ranking = []
     for i, g_dane in enumerate(dane_graczy):
         srodowisko.silnik.gracze[i].zglasza_uno = g_dane['zglasza_uno']
         srodowisko.silnik.gracze[i].pominiete_tury = g_dane['pominiete_tury']
+        # Rekonstrukcja rankingu graczy, którzy pozbyli się kart
+        if len(srodowisko.silnik.gracze[i].reka) == 0 and len(srodowisko.silnik.stos) > 0:
+            srodowisko.silnik.ranking.append(i)
 
     return srodowisko, dane_graczy
 

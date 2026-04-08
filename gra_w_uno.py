@@ -329,8 +329,7 @@ class srodowisko_uno:
                     maska[a] = 1
                     ma_ruch = True
 
-        if not ma_ruch:
-            maska[60] = 1
+        maska[60] = 1
 
         if len(g.reka) <= 2 and not g.zglasza_uno:
             maska[61] = 1
