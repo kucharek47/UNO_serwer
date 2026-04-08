@@ -6,12 +6,14 @@ from flask_socketio import SocketIO, join_room, emit
 import bazy
 import logika_serwerowa
 from gra_w_uno import srodowisko_uno
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 sciezka_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), 'dist/UNOFront/browser'))
 
 app = Flask(__name__, static_folder=sciezka_dist, static_url_path='/')
 app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY')
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
 
 with app.app_context():
     bazy.inicjalizuj_baze()
@@ -20,9 +22,15 @@ with app.app_context():
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serwuj_angular(path):
-    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+    print(f"[DEBUG ROUTING] Zapytanie o sciezke: '{path}' | Pelny adres: {request.url}")
+    sciezka_pliku = os.path.join(app.static_folder, path)
+
+    if path != "" and os.path.exists(sciezka_pliku):
+        print(f"[DEBUG ROUTING] Znaleziono plik, serwuje: {sciezka_pliku}")
         return send_from_directory(app.static_folder, path)
     else:
+        plik_index = os.path.join(app.static_folder, 'index.html')
+        print(f"[DEBUG ROUTING] Brak pliku, probuje serwowac index: {plik_index}")
         return send_from_directory(app.static_folder, 'index.html')
 
 
@@ -235,4 +243,4 @@ def wykonaj_ruch(dane):
 
 
 if __name__ == '__main__':
-    socketio.run(app, port=13007, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=13007, debug=True, allow_unsafe_werkzeug=True)
