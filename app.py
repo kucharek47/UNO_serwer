@@ -36,9 +36,9 @@ def wyslij_zaktualizowany_stan(pokoj_id, logi=None):
                 'logi': logi or []
             }
             if token:
-                emit('aktualizacja_stolu', stan_do_wyslania, room=token)
+                emit('aktualizacja_stolu', stan_do_wyslania, room=token, include_self=True)
             else:
-                emit('aktualizacja_stolu', stan_do_wyslania, room=kod_pokoju)
+                emit('aktualizacja_stolu', stan_do_wyslania, room=kod_pokoju, include_self=True)
 
 
 @socketio.on('tworz_pokoj')
@@ -76,9 +76,8 @@ def dolacz(dane):
 
     join_room(kod)
     join_room(token)
-    emit('nowy_gracz', {'numer': numer_gracza, 'nazwa': nazwa_gracza, 'czy_bot': False}, room=kod)
+    emit('nowy_gracz', {'numer': numer_gracza, 'nazwa': nazwa_gracza, 'czy_bot': False}, room=kod, include_self=True)
     return {'status': 'ok', 'kod': kod, 'token': token, 'numer_gracza': numer_gracza}
-
 
 @socketio.on('dodaj_bota')
 def dodaj_bota(dane):
@@ -111,9 +110,9 @@ def dodaj_bota(dane):
     # Dodano brakujący parametr z nazwą bota
     bazy.dodaj_gracza(pokoj_id, wolny_numer, nazwa_bota, True, uuid.uuid4().hex)
 
-    emit('nowy_gracz', {'numer': wolny_numer, 'nazwa': nazwa_bota, 'czy_bot': True}, room=dane_pokoju['kod_dostepu'])
+    emit('nowy_gracz', {'numer': wolny_numer, 'nazwa': nazwa_bota, 'czy_bot': True}, room=dane_pokoju['kod_dostepu'],
+         include_self=True)
     return {'status': 'ok', 'numer_bota': wolny_numer}
-
 
 @socketio.on('start_gry')
 def start_gry(dane):
@@ -178,6 +177,7 @@ def wznow_sesje(dane):
 
     kod_pokoju = dane_pokoju['kod_dostepu']
     join_room(kod_pokoju)
+    join_room(token)
 
     stan_gry = {
         'pokoj': dane_pokoju,
@@ -221,4 +221,4 @@ def wykonaj_ruch(dane):
 
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=54321, allow_unsafe_werkzeug=True)
