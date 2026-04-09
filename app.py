@@ -23,14 +23,14 @@ with app.app_context():
 @app.route('/<path:path>')
 def serwuj_angular(path):
     print(f"[DEBUG ROUTING] Zapytanie o sciezke: '{path}' | Pelny adres: {request.url}")
-    sciezka_pliku = os.path.join(app.static_folder, path)
 
-    if path != "" and os.path.exists(sciezka_pliku):
-        print(f"[DEBUG ROUTING] Znaleziono plik, serwuje: {sciezka_pliku}")
+    if '.' in path:
+        sciezka_pliku = os.path.join(app.static_folder, path)
+        print(f"[DEBUG ROUTING] Zadanie o plik, serwuje: {sciezka_pliku}")
         return send_from_directory(app.static_folder, path)
     else:
         plik_index = os.path.join(app.static_folder, 'index.html')
-        print(f"[DEBUG ROUTING] Brak pliku, probuje serwowac index: {plik_index}")
+        print(f"[DEBUG ROUTING] Brak kropki, leci do angulara: {plik_index}")
         return send_from_directory(app.static_folder, 'index.html')
 
 
