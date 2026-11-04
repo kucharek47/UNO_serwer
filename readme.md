@@ -2,7 +2,7 @@
 
 Serwer backendowy dla gry w UNO, napisany w języku Python z wykorzystaniem bibliotek Flask oraz Flask-SocketIO. Aplikacja zarządza logiką gry, pokojami, graczami (w tym botami) oraz komunikacją w czasie rzeczywistym poprzez WebSockets. Projekt jest połączony z bazą danych PostgreSQL i serwuje aplikację kliencką.
 
-🌐 **Wersja Live (Demo):** [uno.kucharek47.pl](https://uno.kucharek47.pl)  
+🌐 **Wersja Live (Demo):** [uno.zarmat.pl](https://uno.zarmat.pl)  
 🎨 **Kod źródłowy frontendu:** [github.com/kucharek47/UNOFront](https://github.com/kucharek47/UNOFront)  
 
 ## Struktura projektu

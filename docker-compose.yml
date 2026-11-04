@@ -1,22 +1,14 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:15-alpine
-    env_file:
-      - .env
-    ports:
-      - "5432:5432"
-    volumes:
-      - ./baza_danych_dane:/var/lib/postgresql/data
-    restart: unless-stopped
-
-  serwer:
+  web:
     build: .
-    env_file:
-      - .env
     ports:
-      - "5000:5000"
-    depends_on:
-      - db
-    restart: unless-stopped
+      - "13007:13007"
+    environment:
+      - DATABASE_URL=postgresql://u8k2Pz9qL1:m4X9vBc2Qw@host.docker.internal:9432/uno_baza_db?client_encoding=utf8
+      - FLASK_SECRET_KEY=s8K3nZ9pQ
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - .:/app
