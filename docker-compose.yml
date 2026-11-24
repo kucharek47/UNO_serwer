@@ -1,8 +1,7 @@
-version: '3.8'
-
 services:
   web:
     build: .
+    restart: unless-stopped
     ports:
       - "13007:13007"
     environment:
